@@ -40,9 +40,10 @@ class AsyncServo
   Servo *aServo; // pointer to servo object
   int pin;
 
-  int targetPosition;
+  public: int targetPosition;
   int currentPosition;
   int moveIncrement;
+  public: bool finishedMove = false;
 
   int updateInterval;
   unsigned long lastUpdate;
@@ -57,6 +58,7 @@ class AsyncServo
   }
 
   void Update() {
+    Serial.println("Update");
     if ((millis() - lastUpdate) > updateInterval) {
       lastUpdate = millis();
       if (currentPosition < targetPosition) {
@@ -65,18 +67,57 @@ class AsyncServo
       } else if (currentPosition > targetPosition) {
         currentPosition -= moveIncrement;
         aServo->write(currentPosition);
+      } else if (currentPosition == targetPosition){
+        Serial.println("finishedMove");
+        finishedMove = true;
       }
+      Serial.print(pin);
+      Serial.print("servo current pos: ");
       Serial.println(currentPosition);
+      Serial.print(pin);
+      Serial.print("servo target pos:");
+      Serial.println(targetPosition);
     }
+  }
+
+  int getCurPos(){
+    return currentPosition;
+  }
+
+  void setSpeed(int newSpeed){
+    moveIncrement = newSpeed;
+  }
+
+  void goToPos(int newPos){
+    targetPosition = newPos;
+  }
+
+  void newMove(int newPos, int newSpeed){
+    Serial.print("finished Move: ");
+    Serial.println(finishedMove);
+    finishedMove = false;
+    Serial.print("finished Move: ");
+    Serial.println(finishedMove);
+    moveIncrement = newSpeed;
+    Serial.print("New Move Increment: ");
+    Serial.println(moveIncrement);
+    targetPosition = newPos;
+    Serial.print("New Target: ");
+    Serial.println(targetPosition);
   }
 };
 
-AsyncServo servo1(&Servo1, SERVO1_PIN, 3, 3, 10, 0);
-AsyncServo servo2(&Servo2, SERVO2_PIN, 3, 3, 10, 0);
-AsyncServo servo3(&Servo3, SERVO3_PIN, 3, 3, 10, 0);
-AsyncServo servo4(&Servo4, SERVO4_PIN, 3, 3, 10, 0);
+AsyncServo servo1(&Servo1, SERVO1_PIN, 1, 1, 20, 0);
+//AsyncServo servo2(&Servo2, SERVO2_PIN, 1, 1, 0, 0);
+//AsyncServo servo3(&Servo3, SERVO3_PIN, 3, 3, 10, 0);
+//AsyncServo servo4(&Servo4, SERVO4_PIN, 3, 3, 10, 0);
 
 
+
+
+
+int motionStep = 0;
+bool firstMove = true;
 // Initialize at the default i2c address, we are only using one expander
 //Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
@@ -101,30 +142,32 @@ void loop() {
   //Arm.setJointPos(0, newJointPos);
   //Arm.setJointPos(1, newJointPos);
   //newJointPos += 10;
-
-  //come(Servo1);
+  servo1.Update();
+  //servo2.Update();
+  come(servo1);
   //come(Servo2);
   sonicDirection(ultrasonic.read());
   //if (newJointPos >= 175) {
   //  newJointPos = 15;
   //}
+  
   delay(1000);
 }
 
 // Returns 0,1,2 if the range is decreasing, stable, increasing
 int sonicHysterisis = 20;
 int sonicDirection(long reading){
-  Serial.println(reading);
+  //Serial.println(reading);
   if(reading <= (lastSonicRange - sonicHysterisis)){
-    Serial.println("Range Decreasing");
+    //Serial.println("Range Decreasing");
     lastSonicRange = reading;
     return 0;
   }else if(reading >= lastSonicRange + sonicHysterisis){
-    Serial.println("Range increasing");
+    //Serial.println("Range increasing");
     lastSonicRange = reading;
     return 2;
   }else {
-    Serial.println("Range stable");
+    //Serial.println("Range stable");
     lastSonicRange = reading;
     return 1;
   }
@@ -132,14 +175,35 @@ int sonicDirection(long reading){
 }
 
 
-void come(Servo movingServo, int pos) {
-  for (pos = 0; pos <= 180; pos += 1) {  // goes from 0 degrees to 180 degrees
-    // in steps of 1 degree
-    movingServo.write(pos);  // tell servo to go to position in variable 'pos'
-    delay(15);               // waits 15 ms for the servo to reach the position
+void come(AsyncServo& movingServo1){//}, AsyncServo movingServo2) {
+  int servo1_Move[] =   {0, 180, 0, 180};
+  int servo_Speed[] =  {1, 1,   1,   1};
+  int servo2_Move[] =   {0, 180, 0, 180};
+  int maxStep = 3;
+  
+  if(movingServo1.finishedMove){
+    Serial.println("finished move!");
+    movingServo1.newMove(servo1_Move[motionStep], servo_Speed[motionStep]);
+    //movingServo2.newMove(servo2_Move[motionStep], servo_Speed[motionStep]);
+    motionStep++;
+    Serial.print("motionStep ");
+    Serial.println(motionStep);
   }
-  for (pos = 180; pos >= 0; pos -= 1) {  // goes from 180 degrees to 0 degrees
-    movingServo.write(pos);              // tell servo to go to position in variable 'pos'
-    delay(15);                           // waits 15 ms for the servo to reach the position
+  
+  //if( movingServo2.finishedMove){
+    
+  //}
+  if( motionStep == maxStep){
+    motionStep = 0;
   }
+
+  firstMove = false;
+}
+
+void breathe(Servo movingServo1, Servo movingServo2){
+
+}
+
+void scream(Servo movingServo1, Servo movingServo2){
+
 }
